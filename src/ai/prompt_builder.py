@@ -263,8 +263,6 @@ class PromptBuilder:
 注意：
 1. 根据市场趋势灵活选择BUY_OPEN（做多）或SELL_OPEN（做空），不要只做单向交易
 2. 如果action是BUY_OPEN或SELL_OPEN，必须给出合理的止盈止损百分比
-3. BUY_OPEN：take_profit > 0 > stop_loss（上涨止盈，下跌止损）
-4. SELL_OPEN：take_profit < 0 < stop_loss（下跌止盈，上涨止损）
 """
         return prompt.strip()
     
@@ -314,7 +312,7 @@ class PromptBuilder:
             
             # 多周期技术指标
             multi_data = market_data.get('multi_timeframe', {}) or {}
-            for interval in ['5m', '1h', '4h']:
+            for interval in ['5m', '15m' , '1h', '4h' , '1D']:
                 if interval not in multi_data:
                     continue
                 
@@ -342,9 +340,9 @@ class PromptBuilder:
                     result += f"BOLL上轨: {bb_upper:.2f} | BOLL中轨: {bb_middle:.2f} | BOLL下轨: {bb_lower:.2f}"
                 
                 df = data.get('dataframe')
-                if df is not None and len(df) >= 6:
-                    result += "\n最近9根K线（OHLC）:\n"
-                    for idx, (i, row) in enumerate(df.tail(6).iterrows()):
+                if df is not None and len(df) >= 18:
+                    result += "\n最近18根K线（OHLC）:\n"
+                    for idx, (i, row) in enumerate(df.tail(18).iterrows()):
                         open_price = row.get('open', 0) or 0
                         high = row.get('high', 0) or 0
                         low = row.get('low', 0) or 0

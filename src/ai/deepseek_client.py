@@ -29,7 +29,7 @@ class DeepSeekClient:
         self.base_url = "https://api.deepseek.com/v1"
 
         # ✅ FIX: use httpx.Client to support proxies / avoid unsupported kwargs
-        http_client = httpx.Client(timeout=30.0)
+        http_client = httpx.Client(timeout=120.0)
 
         self.client = OpenAI(
             api_key=self.api_key,

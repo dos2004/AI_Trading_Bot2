@@ -9,7 +9,8 @@ import requests
 from typing import Optional, Dict, Any
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
-
+from typing import Optional, Dict, Any
+from functools import lru_cache
 
 class BinanceClient:
     """Binance API客户端封装"""
@@ -372,7 +373,9 @@ class BinanceClient:
             创建的订单列表
         """
         orders = []
-        
+        print(f"\n🧩 [DEBUG] set_take_profit_stop_loss() called for {symbol}")
+        print(f"    ↳ side: {side}, qty: {quantity}")
+        print(f"    ↳ take_profit_price: {take_profit_price}, stop_loss_price: {stop_loss_price}")
         try:
             # 设置止盈
             if take_profit_price:
@@ -444,3 +447,34 @@ class BinanceClient:
         except Exception as e:
             print(f"⚠️ 连接测试失败: {e}")
             return False
+
+    @lru_cache(maxsize=256)
+    def get_symbol_filters(self, symbol: str):
+        """
+        Return SymbolFilters for a USDT-M futures symbol.
+        Uses futures_exchange_info() and extracts the symbol's filters.
+        Cached to avoid repeated calls.
+        """
+        try:
+            info = self.client.futures_exchange_info()  # dict with "symbols": [...]
+            symbols = info.get("symbols", [])
+            target = next((s for s in symbols if s.get("symbol") == symbol), None)
+            if not target:
+                # Fallback: direct REST call to /fapi/v1/exchangeInfo?symbol=...
+                import requests, time
+                url = f"{self.base_url}/fapi/v1/exchangeInfo"
+                resp = requests.get(url, params={"symbol": symbol}, timeout=self.timeout)
+                resp.raise_for_status()
+                data = resp.json()
+                syms = data.get("symbols", [])
+                target = syms[0] if syms else None
+
+            if not target:
+                raise ValueError(f"Symbol {symbol} not found in exchange info")
+
+            from src.utils.symbol_filters import SymbolFilters
+            return SymbolFilters(target)
+
+        except Exception as e:
+            # Surface a clear error; your retry decorator can handle transient issues
+            raise RuntimeError(f"Failed to load filters for {symbol}: {e}")
