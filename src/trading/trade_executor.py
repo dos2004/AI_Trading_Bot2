@@ -87,7 +87,7 @@ class TradeExecutor:
 
         # 量化数量 & 名义金额检查
         adj_qty, _, used_price = self._ensure_qty_price(symbol, quantity)
-        if adj_qty <= 0:
+        if float(adj_qty) <= 0:
             raise ValueError(f"{symbol} 数量无效（量化后<=0）")
         
         # 开仓
@@ -127,7 +127,7 @@ class TradeExecutor:
 
         # 量化数量 & 名义金额检查
         adj_qty, _, used_price = self._ensure_qty_price(symbol, quantity)
-        if adj_qty <= 0:
+        if float(adj_qty) <= 0:
             raise ValueError(f"{symbol} 数量无效（量化后<=0）")
 
         # 开仓
@@ -178,7 +178,7 @@ class TradeExecutor:
 
             # 量化平仓数量（有的symbol需要按stepSize）
             adj_qty, _, _ = self._ensure_qty_price(symbol, amount)
-            if adj_qty <= 0:
+            if float(adj_qty) <= 0:
                 print(f"⚠️ {symbol} 平仓数量量化后为0，跳过")
                 return None
 
@@ -214,7 +214,7 @@ class TradeExecutor:
 
             # 量化数量 & 名义金额检查
             adj_qty, _, _ = self._ensure_qty_price(symbol, close_amount)
-            if adj_qty <= 0:
+            if float(adj_qty) <= 0:
                 print(f"⚠️ {symbol} 部分平仓数量量化后为0，跳过")
                 return None
 
@@ -238,6 +238,12 @@ class TradeExecutor:
 
     # ==================== 止盈止损 ====================
 
+    def _fmt_price(self, p) -> str:
+        try:
+            return f"{float(p):.2f}"
+        except Exception:
+            return str(p)
+        
     def _set_take_profit_stop_loss(self, symbol: str, side: str, quantity: float,
                                    take_profit: float = None, stop_loss: float = None):
         """设置止盈止损（量化 stopPrice 到 tickSize）"""
@@ -252,9 +258,9 @@ class TradeExecutor:
             )
 
             if tp:
-                print(f"   📈 止盈价: ${tp:.2f}")
+                print(f"   📈 止盈价: ${self._fmt_price(tp)}")
             if sl:
-                print(f"   🛑 止损价: ${sl:.2f}")
+                print(f"   🛑 止损价: ${self._fmt_price(sl)}")
 
         except Exception as e:
             print(f"⚠️ 设置止盈止损失败: {e}")
