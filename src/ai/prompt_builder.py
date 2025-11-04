@@ -327,7 +327,8 @@ class PromptBuilder:
         # 价格类指标（单值）：动态价格精度
         block: Dict[str, Any] = {
             "time_frame": interval,
-            "ema20": self._round_price(symbol, ind.get("ema_20", 0.0)),
+            "ema7": self._round_price(symbol, ind.get("ema_7", 0.0)),
+            "ema21": self._round_price(symbol, ind.get("ema_21", 0.0)),
             "atr14": self._round_price(symbol, ind.get("atr_14", 0.0)),  # ATR 为价格距离，也用价格精度
         }
 
@@ -374,7 +375,7 @@ class PromptBuilder:
         # ===== OHLC（最近10根，旧→新；价格用动态价格精度）=====
         ohlc_list: List[Dict[str, float]] = []
         if df is not None and len(df) > 0:
-            tail = df.tail(10)
+            tail = df.tail(5)
             for _, row in tail.iterrows():
                 o = self._round_price(symbol, row.get("open", 0))
                 h = self._round_price(symbol, row.get("high", 0))
@@ -382,8 +383,8 @@ class PromptBuilder:
                 c = self._round_price(symbol, row.get("close", 0))
                 v = self._round(row.get("volume", 0), 0)  # 量仍用 0 位
                 ohlc_list.append({"O": o, "H": h, "L": l, "C": c, "V": v})
-        # block["ohlc"] = ohlc_list
-        block["patterns"] = self._detect_candlestick_patterns(ohlc_list) if ohlc_list else []
+        block["ohlc"] = ohlc_list
+        # block["patterns"] = self._detect_candlestick_patterns(ohlc_list) if ohlc_list else []
         return block
 
     # ---------------------------
@@ -527,26 +528,29 @@ class PromptBuilder:
 📊 **輸入的 JSON 結構（重點欄位）**
 - `market` / `current_price` / `funding` / `open_interest`
 - `position`：當前持倉（若有） 
-- `market_data`：多時間框架（5m、15m、1h、4h、1D 等）
-  - `atr14`: 波動幅度
-  - `ema20`: ema20
-  - `rsi`: 最近 10 筆（rsi 舊→新）
-  - `macd`: 最近 10 筆 MACD 快線（舊→新）
-  - `histogram`: 最近 10 筆 MACD 柱狀圖（舊→新）
-  - `kdj`: 最近 10 筆 kdj
-  - `pattern`: 近幾根 K 線辨識形態（舊→新）
+- `market_data`：多時間框架（5m、1h、1D 等）
+  - `atr14`: 波動幅度 (權重:5%)
+  - `ema7`: ema7 (權重:5%)
+  - `ema21`: ema21 (權重:5%)
+  - `rsi`: 最近 10 筆（rsi 舊→新）(權重:20%)
+  - `macd`: 最近 10 筆 MACD 快線（舊→新）(權重:5%)
+  - `histogram`: 最近 10 筆 MACD 柱狀圖（舊→新）(權重:5%)
+  - `kdj`: 最近 10 筆 kdj (權重:35%)
+  - `ohlcv`: open/high/low/change/volume  （舊→新）(權重:5%)
+  - `boll`:  最近 10 筆 boll資料 (權重:15%)
   
+  - **decision_history（舊→新）**：請審視最近數筆紀錄，並遵循：
+  1) 避免「來回打臉」：若上次剛開倉，除非出現**反向強訊號**（如 MACD 零軸反轉 + KDJ 交叉 + RSI 位階改變），否則傾向持有或減倉，而非立即反手  
+  2) 若同方向連勝且多週期一致 ⇒ 可**小幅加槓桿/加倉**（不得超過上限）  
+  3) **具體化理由**：在 reason 中說明「相對於最近一次操作的變化點」（例：「上次 BUY_OPEN 後，4h MACD 由正轉負且 KDJ 死亡交叉，決定 CLOSE」）
+     - 若本次建議與上次歷史方向相反，請在 reason 中**明確列出反轉依據**（指標交叉、零軸穿越、布林結構改變、關鍵位失守/站回）
+
 #技術指標資料說明:
 - time_frame:1d 用來判斷大方向,空頭趨勢盡量做空,多頭趨勢盡量做多
 - time_frame:1h,3m 用來判斷是否開倉,也可用來判斷是否獲利了結/停損
 - 可参考 market_data 内不同 time_frame 的 RSI/MACD/HIST/KDJ/BOLL 皆为「旧→新」序列）。
 - 每个币种下方含有该币的 decision_history（旧→新），可用以对齐你的建议与既有持仓/历史。
-- **decision_history（舊→新）**：請審視最近數筆紀錄，並遵循：
-  1) 避免「來回打臉」：若上次剛開倉，除非出現**反向強訊號**（如 MACD 零軸反轉 + KDJ 交叉 + RSI 位階改變），否則傾向持有或減倉，而非立即反手  
-  2) 若歷史連續錯向或 ATR 升高 ⇒ 優先**降槓桿/縮小倉位**  
-  3) 若同方向連勝且多週期一致 ⇒ 可**小幅加槓桿/加倉**（不得超過上限）  
-  4) **具體化理由**：在 reason 中說明「相對於最近一次操作的變化點」（例：「上次 BUY_OPEN 後，4h MACD 由正轉負且 KDJ 死亡交叉，決定 CLOSE」）
-- 若本次建議與歷史方向相反，請在 reason 中**明確列出反轉依據**（指標交叉、零軸穿越、布林結構改變、關鍵位失守/站回）
+- 依據各項指標權重加種判斷出本次多空方向
 
 #倉位说明：
 - 每个币种单独决策，依市场状况 BUY_OPEN(作多)/SELL_OPEN(作空)/ADD_BUY_OPEN(加倉作多)/ADD_SELL_OPEN(加倉作空)
@@ -561,11 +565,15 @@ class PromptBuilder:
 - 若技術分析結果與市場情況相反,造成倉位浮虧的時候:
   請先把position物件內的 pnl_percent除以leverage (pnl_percent/leverage) 
   得到的數字超過 {self.config.get('risk', {}).get('position_tolerance', 10)}% 再考慮停損
-  但若技術分析反轉(參照decision_history), 且信心足夠 , 可考慮停損
 - 在考慮減倉時:
   請先把position物件內的 pnl_percent除以leverage (pnl_percent/leverage) 
   得到的數字超過 {self.config.get('risk', {}).get('reduce_if_over', 10)}% 再考慮鎖定利潤
   或是根據decision_history上一次的艙位,獲利減少超過{self.config.get('risk', {}).get('reduce_if_fallback', 10)}%時,再考慮鎖定利潤
+
+#額外說明
+-不要抄底摸頭追漲殺跌
+-順向交易
+-不要頻繁開倉關倉,有足夠信心再給開倉信號,不要一點虧損就賣出
 
 #当前时间
 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
