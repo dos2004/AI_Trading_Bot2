@@ -567,7 +567,7 @@ class TradingBot:
             self.log_ai.info(f"   保证金率: {account_summary['margin_ratio']:.2f}%")
         
         # 方式1：多币种一次性分析（优化）
-        if len(symbols) > 1:
+        if len(symbols) > 0:
             # 收集所有币种的数据
             all_symbols_data = {}
             for symbol in symbols:
