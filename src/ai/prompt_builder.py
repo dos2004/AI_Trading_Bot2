@@ -383,7 +383,7 @@ class PromptBuilder:
                 c = self._round_price(symbol, row.get("close", 0))
                 v = self._round(row.get("volume", 0), 0)  # 量仍用 0 位
                 ohlc_list.append({"O": o, "H": h, "L": l, "C": c, "V": v})
-        block["ohlc"] = ohlc_list
+        # block["ohlcv"] = ohlc_list
         # block["patterns"] = self._detect_candlestick_patterns(ohlc_list) if ohlc_list else []
         return block
 
@@ -557,17 +557,16 @@ class PromptBuilder:
   - `atr14`: 波動幅度 (權重:5%)
   - `ema7`: ema7 (權重:5%)
   - `ema21`: ema21 (權重:5%)
-  - `rsi`: 最近 10 筆（rsi 舊→新）(權重:20%)
-  - `macd`: 最近 10 筆 MACD 快線（舊→新）(權重:5%)
-  - `histogram`: 最近 10 筆 MACD 柱狀圖（舊→新）(權重:5%)
-  - `kdj`: 最近 10 筆 kdj (權重:35%)
-  - `ohlcv`: open/high/low/change/volume  （舊→新）(權重:5%)
-  - `boll`:  最近 10 筆 boll資料 (權重:15%)
-  
-  - **decision_history（舊→新）**：讓你參考最近數筆你做過的決策：
+  - `rsi`: 最近 10 筆（rsi 舊→新）(權重:15%)
+  - `macd`: 最近 10 筆 MACD 快線（舊→新）(權重:10%)
+  - `histogram`: 最近 10 筆 MACD 柱狀圖（舊→新）(權重:10%)
+  - `kdj`: 最近 10 筆 kdj (舊→新）(權重:35%)
+  - `boll`:  最近 10 筆 boll資料 (舊→新）(權重:15%)
+  - `decision_history`:（舊→新）最近數筆你做過的決策,並有執行決策後的倉位紀錄
 
 #技術指標資料說明:
 - time_frame:1d 用來判斷大方向
+- time_frame:4h 用來判斷大方向是否有可能反轉
 - time_frame:1h,3m 用來判斷是否開倉,也可用來判斷是否獲利了結/停損
 - 可参考 market_data 内不同 time_frame 的 RSI/MACD/HIST/KDJ/BOLL 皆为「旧→新」序列）。
 - 每个币种下方含有该币的 decision_history（旧→新），可用以对齐你的建议与既有持仓/历史。
@@ -578,7 +577,7 @@ class PromptBuilder:
 - 每个币种单独决策，依市场状况 BUY_OPEN(作多)/SELL_OPEN(作空)/ADD_BUY_OPEN(加倉作多)/ADD_SELL_OPEN(加倉作空)
 - 若判断风险较高或趋势不明确，可使用 HOLD。HOLD時無需提供leverage/open_percent/take_profit/stop_loss
 - BUY_OPEN/SELL_OPEN 时务必提供合理止盈止损價位。 
-- ADD_BUY_OPEN/ADD_SELL_OPEN 為加倉,加倉時需同時提供新的止盈止损價位,(參考當前position的take_profit/stop_loss 來做計算)
+- ADD_BUY_OPEN/ADD_SELL_OPEN 為加倉,加倉時需同時提供新的止盈止损價位,(可參考當前position的take_profit/stop_loss來做計算)
 - take_profit : 開倉價位加{self.config.get('risk', {}).get('take_profit_low', 1)} - {self.config.get('risk', {}).get('take_profit_high', 10)}%
 - stop_loss   : 開倉價位減{self.config.get('risk', {}).get('stop_loss_low', 1)} - {self.config.get('risk', {}).get('stop_loss_high', 10)}%
 - 我會根據你回傳的open_percent,leverage來開倉
