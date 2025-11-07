@@ -109,12 +109,12 @@ class MarketDataManager:
 
     def _compute_indicators(self, df: pd.DataFrame) -> dict:
         zeros = {
-            "RSI": 0.0, "MACD": 0.0, "EMA20": 0.0, "EMA50": 0.0,
+            "RSI": 0.0, "MACD": 0.0, "EMA7": 0.0, "EMA21": 0.0,
             "SMA20": 0.0, "SMA50": 0.0, "BOLL_UP": 0.0, "BOLL_MID": 0.0,
             "BOLL_LOW": 0.0, "ATR": 0.0,
             # snake_case the prompt expects:
             "rsi": 0.0, "macd": 0.0, "macd_signal": 0.0, "macd_histogram": 0.0,
-            "ema_20": 0.0, "ema_50": 0.0, "sma_20": 0.0, "sma_50": 0.0,
+            "ema_7": 0.0, "ema_21": 0.0, "sma_20": 0.0, "sma_50": 0.0,
             "bollinger_middle": 0.0, "bollinger_upper": 0.0, "bollinger_lower": 0.0,
             "atr_14": 0.0,
         }
@@ -130,8 +130,8 @@ class MarketDataManager:
         # compute via project helpers
         rsi = calculate_rsi(close, 14)
         macd_line, macd_signal, macd_hist = calculate_macd(close, 12, 26, 9)
-        ema20 = calculate_ema(close, 20)
-        ema50 = calculate_ema(close, 50)
+        ema7 = calculate_ema(close, 7)
+        ema21 = calculate_ema(close, 21)
         sma20 = calculate_sma(close, 20)
         sma50 = calculate_sma(close, 50)
         mid, up, lowb = calculate_bollinger_bands(close, 20, 2.0)
@@ -148,8 +148,8 @@ class MarketDataManager:
             # Uppercase set (you used earlier)
             "RSI": nz(rsi),
             "MACD": nz(macd_hist),           # single-number MACD → histogram
-            "EMA20": nz(ema20),
-            "EMA50": nz(ema50),
+            "EMA7": nz(ema7),
+            "EMA21": nz(ema21),
             "SMA20": nz(sma20),
             "SMA50": nz(sma50),
             "BOLL_UP": nz(up),
@@ -162,8 +162,8 @@ class MarketDataManager:
             "macd": nz(macd_line),           # prompt expects 3 MACD pieces:
             "macd_signal": nz(macd_signal),  #   line, signal, histogram
             "macd_histogram": nz(macd_hist),
-            "ema_20": nz(ema20),
-            "ema_50": nz(ema50),
+            "ema_7": nz(ema7),
+            "ema_21": nz(ema21),
             "sma_20": nz(sma20),
             "sma_50": nz(sma50),
             "bollinger_middle": nz(mid),

@@ -2,9 +2,9 @@
   "trading": {
     "symbols": ["BTCUSDT"],
     "default_leverage": 3,
-    "max_leverage": 5,
-    "min_position_percent": 10,
-    "max_position_percent": 15,
+    "max_leverage": 6,
+    "min_position_percent": 6,
+    "max_position_percent": 12,
     "reserve_percent": 20
   },
   "paths": {
@@ -13,20 +13,20 @@
     "max_history": 300
   },
   "risk": {
-    "max_daily_loss_percent": 40,
-    "max_consecutive_losses": 5,
+    "max_daily_loss_percent": 35,
+    "max_consecutive_losses": 4,
     "stop_loss_low": 2,
     "stop_loss_high": 10,
     "take_profit_low": 2,
     "take_profit_high": 10,
-    "reduce_if_over" : 1,
-    "reduce_if_fallback" : 30,
+    "reduce_if_over" : 10,
+    "reduce_if_fallback" : 20,
     "position_tolerance" : -2
   },
   "ai": {
     "model": "deepseek-reasoner",
     "temperature": 0.7,
-    "max_tokens": 10000
+    "max_tokens": 6000
   },
   "schedule": {
     "interval_seconds": 180,

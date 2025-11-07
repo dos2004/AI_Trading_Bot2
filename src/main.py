@@ -261,10 +261,10 @@ class TradingBot:
                     all_hold = False
                     
             self.log_ai.info(f"{'='*60}\n")
-            if not all_hold:
-                notify_discord(content)
-            else:
-                notify_discord(f"策略未改變,省略通知@{now_str}")
+            # if not all_hold:
+            #     notify_discord(content)
+            # else:
+            #     notify_discord(f"策略未改變,省略通知@{now_str}")
             return decisions
         except Exception as e:
             self.log_ai.info(f"❌ AI分析失败: {e}")

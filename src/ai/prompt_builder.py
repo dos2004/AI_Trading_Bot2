@@ -573,7 +573,7 @@ class PromptBuilder:
 - 依據各項指標權重加種判斷出本次多空方向
 
 #倉位说明：
-- 初始資金為1000
+- 初始資金為100
 - 每个币种单独决策，依市场状况 BUY_OPEN(作多)/SELL_OPEN(作空)/ADD_BUY_OPEN(加倉作多)/ADD_SELL_OPEN(加倉作空)
 - 若判断风险较高或趋势不明确，可使用 HOLD。HOLD時無需提供leverage/open_percent/take_profit/stop_loss
 - BUY_OPEN/SELL_OPEN 时务必提供合理止盈止损價位。 
