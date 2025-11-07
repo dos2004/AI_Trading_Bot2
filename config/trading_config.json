@@ -29,7 +29,7 @@
     "max_tokens": 4000
   },
   "schedule": {
-    "interval_seconds": 180,
+    "interval_seconds": 300,
     "retry_times": 3,
     "retry_delay_seconds": 5
   }

@@ -553,7 +553,7 @@ class PromptBuilder:
 📊 **輸入的 JSON 結構（重點欄位）**
 - `market` / `current_price` / `funding` / `open_interest`
 - `position`：當前持倉（若有） 
-- `market_data`：多時間框架（5m、1h、1D 等）
+- `market_data`：多時間框架（5m、1h、4h、1d 等）
   - `atr14`: 波動幅度 (權重:5%)
   - `ema7`: ema7 (權重:5%)
   - `ema21`: ema21 (權重:5%)
@@ -567,7 +567,7 @@ class PromptBuilder:
 #技術指標資料說明:
 - time_frame:1d 用來判斷大方向
 - time_frame:4h 用來判斷大方向是否有可能反轉
-- time_frame:1h,3m 用來判斷是否開倉,也可用來判斷是否獲利了結/停損
+- time_frame:1h,5m 用來判斷是否開倉,也可用來判斷是否獲利了結/停損
 - 可参考 market_data 内不同 time_frame 的 RSI/MACD/HIST/KDJ/BOLL 皆为「旧→新」序列）。
 - 每个币种下方含有该币的 decision_history（旧→新），可用以对齐你的建议与既有持仓/历史。
 - 依據各項指標權重加種判斷出本次多空方向

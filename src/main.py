@@ -187,7 +187,7 @@ class TradingBot:
     def get_market_data_for_symbol(self, symbol: str) -> Dict[str, Any]:
         """获取单个币种的市场数据"""
         # 多周期K线
-        intervals = ['3m', '1h' , "4h" , '1d']
+        intervals = ['5m', '1h' , "4h" , '1d']
         multi_timeframe = self.market_data.get_multi_timeframe_data(symbol, intervals)
         
         # 实时行情
