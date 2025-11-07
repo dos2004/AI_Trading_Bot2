@@ -13,23 +13,23 @@
     "max_history": 300
   },
   "risk": {
-    "max_daily_loss_percent": 35,
+    "max_daily_loss_percent": 20,
     "max_consecutive_losses": 4,
     "stop_loss_low": 2,
-    "stop_loss_high": 10,
+    "stop_loss_high": 6,
     "take_profit_low": 2,
-    "take_profit_high": 10,
+    "take_profit_high": 12,
     "reduce_if_over" : 10,
-    "reduce_if_fallback" : 20,
+    "reduce_if_fallback" : 30,
     "position_tolerance" : -2
   },
   "ai": {
     "model": "deepseek-reasoner",
-    "temperature": 0.8,
-    "max_tokens": 3000
+    "temperature": 0.7,
+    "max_tokens": 2000
   },
   "schedule": {
-    "interval_seconds": 300,
+    "interval_seconds": 180,
     "retry_times": 3,
     "retry_delay_seconds": 5
   }
