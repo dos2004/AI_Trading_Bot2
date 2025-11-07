@@ -462,7 +462,7 @@ class PromptBuilder:
             open_interest = self._get(realtime, "open_interest", 0.0, 0)
 
             symbol_obj: Dict[str, Any] = {
-                "market": f"{coin_name}/USDT",
+                "market": symbol,
                 "funding": funding_rate,
                 "open_interest": open_interest,
                 "current_price": current_price,
