@@ -1,6 +1,6 @@
 {
   "trading": {
-    "symbols": ["BNBUSDT"],
+    "symbols": ["BNBUSDT", "SOLUSDT"],
     "default_leverage": 3,
     "max_leverage": 6,
     "min_position_percent": 5,
@@ -26,7 +26,7 @@
   "ai": {
     "model": "deepseek-reasoner",
     "temperature": 0.8,
-    "max_tokens": 3000
+    "max_tokens": 4000
   },
   "schedule": {
     "interval_seconds": 180,

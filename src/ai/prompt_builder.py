@@ -443,7 +443,7 @@ class PromptBuilder:
             }
 
         # 历史决策按币种分组（旧→新）
-        grouped_hist = self._group_history_by_symbol(decision_history, max_per_symbol=5)
+        grouped_hist = self._group_history_by_symbol(decision_history, max_per_symbol=3)
 
         # 遍历币种
         for symbol, symbol_data in all_symbols_data.items():
