@@ -182,12 +182,15 @@ class TradingBot:
             raise ValueError("DEEPSEEK_API_KEY 未配置")
         
         model = self.config.get('ai', {}).get('model', 'deepseek-reasoner')
-        return DeepSeekClient(api_key=api_key, model=model)
+        temperature = self.config.get('ai', {}).get('temperature', 0.7)
+        max_tokens = self.config.get('ai', {}).get('max_tokens', 1000)
+        return DeepSeekClient(api_key, model, temperature, max_tokens)
     
     def get_market_data_for_symbol(self, symbol: str) -> Dict[str, Any]:
         """获取单个币种的市场数据"""
         # 多周期K线
-        intervals = ['3m', '1h' , "4h" , '1d']
+        intervals = ['3m', '1h', "4h", '1d']
+        # intervals = ['3m', '1h', "4h"]
         multi_timeframe = self.market_data.get_multi_timeframe_data(symbol, intervals)
         
         # 实时行情
@@ -202,20 +205,13 @@ class TradingBot:
     def analyze_all_symbols_with_ai(self, all_symbols_data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         """使用AI一次性分析所有币种"""
         try:
-            # 收集所有币种的持仓
-            all_positions = {}
-            for symbol in all_symbols_data.keys():
-                position = self.position_data.get_current_position(symbol)
-                if position:
-                    all_positions[symbol] = position
-            
             # 获取账户摘要
             account_summary = self.account_data.get_account_summary()
             
             # 获取历史决策
             history = self.decision_history[-300:] if self.decision_history else []
             # 构建多币种提示词
-            prompt = self.prompt_builder.build_multi_symbol_analysis_prompt_json(all_symbols_data, account_summary , history)
+            prompt = self.prompt_builder.build_multi_symbol_analysis_prompt_json(all_symbols_data, account_summary, history)
 
             
             # 调用AI
@@ -241,6 +237,10 @@ class TradingBot:
             self.log_ai.info(f"{'='*60}")
             self.log_ai.info(response['content'])
             self.log_ai.info(f"{'='*60}\n")
+
+            money_cost = self.ai_client.calculate_cost(response)
+            self.log_ai.info(f"本次花费成本：{money_cost}元，预计一天花费{money_cost*20*24}元")
+            self.log_ai.info(f"{'=' * 60}\n")
             
             # 解析决策
             decisions = self.decision_parser.parse_multi_symbol_response(response['content'])
@@ -347,8 +347,9 @@ class TradingBot:
             
             total_equity = account_summary['equity']
             
-            # 获取当前价格
-            current_price = market_data['realtime'].get('price', 0)
+            # 获取实时行情价格
+            realtime = self.market_data.get_realtime_market_data(symbol)
+            current_price = realtime.get('price', 0)
             if current_price == 0:
                 self.log_ai.info(f"⚠️ {symbol} 无法获取当前价格")
                 return

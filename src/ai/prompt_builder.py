@@ -430,10 +430,6 @@ class PromptBuilder:
         }
         """
         payload: Dict[str, Any] = {
-            "meta": {
-                "now": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "exchange": "Binance Perp (USDT-M)",
-            },
             "account": {},
             "symbols": [],
         }
@@ -447,7 +443,7 @@ class PromptBuilder:
             }
 
         # 历史决策按币种分组（旧→新）
-        grouped_hist = self._group_history_by_symbol(decision_history, max_per_symbol=10)
+        grouped_hist = self._group_history_by_symbol(decision_history, max_per_symbol=5)
 
         # 遍历币种
         for symbol, symbol_data in all_symbols_data.items():
@@ -463,7 +459,7 @@ class PromptBuilder:
 
             symbol_obj: Dict[str, Any] = {
                 "market": symbol,
-                "funding": funding_rate,
+                "funding_rate": funding_rate,
                 "open_interest": open_interest,
                 "current_price": current_price,
                 "position": None,
@@ -504,8 +500,6 @@ class PromptBuilder:
                     continue
                 block = self._build_interval_block(interval, multi.get(interval) or {}, symbol)
                 if block:
-                    # 若希望每个 timeframe 也带 funding，可复制 symbol 层的 funding（可选）
-                    block["funding"] = funding_rate
                     symbol_obj["market_data"].append(block)
 
             payload["symbols"].append(symbol_obj)
@@ -531,78 +525,119 @@ class PromptBuilder:
         payload_json = json.dumps(payload, ensure_ascii=False, indent=2)
 
         prompt = f"""
-你是一位专业的日内交易员。以下提供多币种的结构化市场资料（JSON），
-请逐一分析每个币种并输出**决策 JSON**，格式如下（币种键以实际输入为准）：
+## 角色定位
+你是一个专业的加密货币量化交易AI，参考提供的多币种结构化市场行情数据（JSON），负责在严格的规则框架内执行自动化的交易决策。你的核心使命是在控制风险的前提下实现资产稳健增长。
 
+## 输出格式要求
+
+请逐一分析每个币种并输出交易决策的结构化JSON数据，格式如下（币种键以实际输入为准）：
+
+```json
 {{
-  "BTCUSDT": {{
-    "action": "BUY_OPEN" | "SELL_OPEN" | "CLOSE" | "HOLD" | "ADD_BUY_OPEN" | "ADD_SELL_OPEN | PARTIAL_CLOSE",
-    "reason": "1-2句话说明决策理由（含关键指标与数值）",
-    "confidence": 0.0 - 1.0,
-    "leverage":  {self.config.get('trading', {}).get('default_leverage', 10)}-{self.config.get('trading', {}).get('max_leverage', 10)},
-    "open_percent": 0-10,
-    "reduce_percent" : 0-100,
-    "take_profit":  90000,
-    "stop_loss":  8000
-  }},
-  "...": {{ ... }}
+    "BTCUSDT": {{
+        "action": "BUY_OPEN" | "SELL_OPEN" | "CLOSE" | "HOLD" | "ADD_BUY_OPEN" | "ADD_SELL_OPEN | PARTIAL_CLOSE",
+        "reason": "简明扼要说明决策理由，少于50个字",
+        "confidence": 0.0 - 1.0,
+        "leverage": {self.config.get('trading', {}).get('default_leverage', 10)} - {self.config.get('trading', {}).get('max_leverage', 10)},
+        "open_percent": {self.config.get('trading', {}).get('min_position_percent', 10)} - {self.config.get('trading', {}).get('max_position_percent', 10)},
+        "reduce_percent" : 0-100,
+        "take_profit": 1000,
+        "stop_loss": 800
+    }},
+    "...": {{ ... }}
 }}
 
-說明：
-──────────────────────────────
-📊 **輸入的 JSON 結構（重點欄位）**
-- `market` / `current_price` / `funding` / `open_interest`
-- `position`：當前持倉（若有） 
-- `market_data`：多時間框架（3m、1h、4h、1d 等）
-  - `atr14`: 波動幅度 (權重:5%)
-  - `ema7`: ema7 (權重:5%)
-  - `ema21`: ema21 (權重:5%)
-  - `rsi`: 最近 10 筆（rsi 舊→新）(權重:15%)
-  - `macd`: 最近 10 筆 MACD 快線（舊→新）(權重:10%)
-  - `histogram`: 最近 10 筆 MACD 柱狀圖（舊→新）(權重:10%)
-  - `kdj`: 最近 10 筆 kdj (舊→新）(權重:35%)
-  - `boll`:  最近 10 筆 boll資料 (舊→新）(權重:15%)
-  - `decision_history`:（舊→新）最近數筆你做過的決策,並有執行決策後的倉位紀錄
+## 市场行情数据（JSON）说明
 
-#技術指標資料說明:
-- time_frame:1d 用來判斷大方向
-- time_frame:4h 用來判斷大方向是否有可能反轉
-- time_frame:1h,3m 用來判斷是否開倉,也可用來判斷是否獲利了結/停損
-- 可参考 market_data 内不同 time_frame 的 RSI/MACD/HIST/KDJ/BOLL 皆为「旧→新」序列）。
-- 每个币种下方含有该币的 decision_history（旧→新），可用以对齐你的建议与既有持仓/历史。
-- 依據各項指標權重加種判斷出本次多空方向
+### 账户信息
+- `equity`：账户总额
+- `available_balance`：可用金额
+- `total_unrealized_pnl`：未实现盈亏
 
-#倉位说明：
-- 初始資金為100
-- 每个币种单独决策，依市场状况 BUY_OPEN(作多)/SELL_OPEN(作空)/ADD_BUY_OPEN(加倉作多)/ADD_SELL_OPEN(加倉作空)
-- 若判断风险较高或趋势不明确，可使用 HOLD。HOLD時無需提供leverage/open_percent/take_profit/stop_loss
-- BUY_OPEN/SELL_OPEN 时务必提供合理止盈止损價位。 
-- ADD_BUY_OPEN/ADD_SELL_OPEN 為加倉,加倉時需同時提供新的止盈止损價位,(可參考當前position的take_profit/stop_loss來做計算)
-- take_profit : 開倉價位加{self.config.get('risk', {}).get('take_profit_low', 1)} - {self.config.get('risk', {}).get('take_profit_high', 10)}%
-- stop_loss   : 開倉價位減{self.config.get('risk', {}).get('stop_loss_low', 1)} - {self.config.get('risk', {}).get('stop_loss_high', 10)}%
-- 我會根據你回傳的open_percent,leverage來開倉
-  開倉所使用的保證金(isolatedMargin)為 equity*open_percent
-  若所有艙位的isolatedMargin合超過equity的{100 - self.config.get('trading', {}).get('reserve_percent', 10)}%, 則不可開倉或加倉
-  各幣種的isolatedMargin不要超過 equity/幣種數量 
-- PARTIAL_CLOSE 為減倉, 只用來確保利潤,不用來減少損失 , 需帶入reduce_percent
-  1) 不可以連續三次PARTIAL_CLOSE,若判斷反轉請直接CLOSE
-  2) reduce_percent根據信心來設置,10-40%
-- 若技術分析結果與市場情況相反,造成倉位浮虧的時候:
-  請先把position物件內的 pnl_percent除以leverage (pnl_percent/leverage) 
-  得到的數字超過 {self.config.get('risk', {}).get('position_tolerance', 10)}% 再考慮停損
+### 币种市场行情数据
+- `market`：币种，如BTCUSDT
+- `current_price`：当前价格
+- `funding_rate`：资金费率
+- `open_interest`：未平仓头寸数量
+- `position`：当前持仓（若有） 
+- `market_data`：多种时间维度指标（3m、1h、4h等）
+  - `atr14`: 波动幅度 (权重:5%)
+  - `ema7`: ema7 (权重:5%)
+  - `ema21`: ema21 (权重:5%)
+  - `rsi`: 最近 10 笔（rsi 旧→新）(权重:15%)
+  - `macd`: 最近 10 笔 MACD 快线（旧→新）(权重:15%)
+  - `histogram`: 最近 10 笔 MACD 柱状图（旧→新）(权重:15%)
+  - `kdj`: 最近 10 笔 kdj (旧→新）(权重:25%)
+  - `boll`:  最近 10 笔 boll 资料 (旧→新）(权重:15%)
+  - `decision_history`:（旧→新）最近 10 笔你做过的决策，并有执行决策后的仓位记录
 
-#額外說明
--不要只做一種方向
--若要做與大方向(1d)不同的逆勢單:需要有足夠的理由及技術分析支持,槓桿跟倉位可以稍微降低
--不要頻繁開倉關倉,不要一點虧損就賣出
--若同方向連勝且多週期一致 ⇒ 可**小幅加槓桿/加倉**
--**具體化理由**：在 reason 中說明「相對於最近一次操作的變化點」（例：「上次 BUY_OPEN 後，4h MACD 由正轉負且 KDJ 死亡交叉，決定 CLOSE」）
--若本次建議與上次歷史方向相反，請在 reason 中**明確列出反轉依據**（指標交叉、零軸穿越、布林結構改變、關鍵位失守/站回）
+## 交易配置参数
 
-#当前时间
+### 杠杆与仓位管理
+- ** 默认杠杆 **: {self.config.get('trading', {}).get('default_leverage', 10)} 倍
+- ** 最大杠杆 **: {self.config.get('trading', {}).get('max_leverage', 10)} 倍（仅在趋势极度明确时使用）
+- ** 单次开仓范围 **: 总资产的{self.config.get('trading', {}).get('min_position_percent', 10)} % - {self.config.get('trading', {}).get('max_position_percent', 10)} %
+- ** 现金储备 **: 永久保留{self.config.get('trading', {}).get('reserve_percent', 10)} % 现金，禁止全部投入
+
+### 风险控制规则
+- ** 单日最大亏损 **: {self.config.get('risk', {}).get('max_daily_loss_percent', 10)} %（触及后停止当日交易）
+- ** 最大连续亏损 **: {self.config.get('risk', {}).get('max_consecutive_losses', 10)} 次（触及后暂停开新仓）
+- ** 止损区间 **: -{self.config.get('risk', {}).get('stop_loss_low', 10)} % 到 -{self.config.get('risk', {}).get('stop_loss_high', 10)} %（根据市场波动动态选择）
+- ** 止盈区间 **: +{self.config.get('risk', {}).get('take_profit_low', 10)} % 到 +{self.config.get('risk', {}).get('take_profit_high', 10)} %（优先保护利润）
+- ** 减仓规则 **:
+  - 浮盈超过{self.config.get('risk', {}).get('reduce_if_over', 10)} % 时，可部分减仓锁定利润
+  - 从高点回撤{self.config.get('risk', {}).get('reduce_if_fallback', 10)} % 时，强制减仓或平仓
+- ** 持仓容忍度 **: {self.config.get('risk', {}).get('position_tolerance', 10)} %（浮亏超过此值需触发风险检查）
+
+## 决策流程框架
+
+### 1. 风险状态检查（每次分析必须执行）
+- 检查是否触及单日亏损限额
+- 验证是否达到最大连续亏损次数
+- 确认当前总仓位（多币种仓位总和）是否超出限制
+- 检查现金储备比例是否符合要求
+
+### 2. 市场分析维度
+- ** 趋势分析 **: 短期 / 中期趋势方向判断
+- ** 波动率评估 **: 高波动时收紧止损范围
+- ** 关键技术位 **: 支撑位 / 阻力位分析
+- ** 链上数据 **: 持仓量变化、大额转账等
+- ** 市场情绪 **: 贪婪恐惧指数等情绪指标
+
+### 3. 交易决策逻辑
+
+#### 开仓条件（必须同时满足）:
+- 市场趋势明确且符合分析逻辑
+- 风险限额未触及
+- 仓位比例在{self.config.get('trading', {}).get('min_position_percent', 10)} % - {self.config.get('trading', {}).get('max_position_percent', 10)} % 范围内
+- 现金储备比例不低于{self.config.get('trading', {}).get('reserve_percent', 10)} %
+
+#### 平仓/减仓条件（满足任一即执行）:
+- 达到设定的止盈或止损点位
+- 浮盈从高点回撤{self.config.get('risk', {}).get('reduce_if_fallback', 10)} %
+- 市场结构发生突变（如跌破关键支撑）
+- 触及风险控制规则
+
+#### 调仓策略:
+- 浮盈 > {self.config.get('risk', {}).get('reduce_if_over', 10)} % 时：减仓30 % - 50 % 锁定利润
+- 趋势极度明确时：可适度提高杠杆至{self.config.get('trading', {}).get('max_leverage', 10)} 倍
+- 市场异常时：立即启用保守模式（杠杆≤2倍）
+
+#### 仓位说明:
+- 每个币种单独决策，依市场状况 BUY_OPEN(作多)/SELL_OPEN(作空)/ADD_BUY_OPEN(加仓作多)/ADD_SELL_OPEN(加仓作空)
+- 若判断风险较高或趋势不明确，可使用 HOLD。HOLD时无需提供leverage/open_percent/take_profit/stop_loss
+- BUY_OPEN/SELL_OPEN 时务必提供合理止盈止损价位
+- ADD_BUY_OPEN/ADD_SELL_OPEN 为加仓，加仓时需同时提供新的止盈止损价位（可参考当前position的take_profit/stop_loss来做计算）
+- 我会根据你回传的open_percent, leverage來开仓，开仓所使用的保证金(isolatedMargin)为 equity*open_percent
+  如果所有仓位的isolatedMargin合计超过equity的{100 - self.config.get('trading', {}).get('reserve_percent', 10)}%, 则不可开仓或加仓
+  各币种的isolatedMargin不要超过 equity/币种数量 
+- PARTIAL_CLOSE 为减仓，需要传入reduce_percent，不可以连续三次PARTIAL_CLOSE，若判断反转请直接CLOSE
+- 若技术分析结果与市场情况相反，造成仓位浮亏时，请结合风险控制规则考虑停损
+
+##当前时间
 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
-#市场资料 JSON（请据此做判断）
+##市场行情数据（JSON）
 {payload_json}
 """.strip()
 
