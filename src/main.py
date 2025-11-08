@@ -189,8 +189,8 @@ class TradingBot:
     def get_market_data_for_symbol(self, symbol: str) -> Dict[str, Any]:
         """获取单个币种的市场数据"""
         # 多周期K线
-        # intervals = ['3m', '1h', "4h", '1d']
-        intervals = ['3m', '1h', "4h"]
+        # intervals = ['5m', '1h', "4h", '1d']
+        intervals = ['5m', '1h', "4h"]
         multi_timeframe = self.market_data.get_multi_timeframe_data(symbol, intervals)
         
         # 实时行情
@@ -239,7 +239,7 @@ class TradingBot:
             self.log_ai.info(f"{'='*60}\n")
 
             money_cost = self.ai_client.calculate_cost(response)
-            self.log_ai.info(f"本次花费成本：{money_cost}元，预计一天花费{money_cost*20*24}元")
+            self.log_ai.info(f"本次花费成本：{money_cost}元，预计一天花费{money_cost*12*24}元")
             self.log_ai.info(f"{'=' * 60}\n")
             
             # 解析决策

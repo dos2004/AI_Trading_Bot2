@@ -1,10 +1,10 @@
 {
   "trading": {
     "symbols": ["BNBUSDT", "SOLUSDT"],
-    "default_leverage": 3,
-    "max_leverage": 6,
-    "min_position_percent": 5,
-    "max_position_percent": 10,
+    "default_leverage": 5,
+    "max_leverage": 10,
+    "min_position_percent": 6,
+    "max_position_percent": 12,
     "reserve_percent": 20
   },
   "paths": {
@@ -16,20 +16,20 @@
     "max_daily_loss_percent": 20,
     "max_consecutive_losses": 4,
     "stop_loss_low": 2,
-    "stop_loss_high": 5,
+    "stop_loss_high": 8,
     "take_profit_low": 2,
-    "take_profit_high": 12,
-    "reduce_if_over" : 8,
+    "take_profit_high": 15,
+    "reduce_if_over" : 10,
     "reduce_if_fallback" : 15,
-    "position_tolerance" : -2
+    "position_tolerance" : -3
   },
   "ai": {
     "model": "deepseek-reasoner",
-    "temperature": 0.8,
+    "temperature": 0.7,
     "max_tokens": 4000
   },
   "schedule": {
-    "interval_seconds": 180,
+    "interval_seconds": 300,
     "retry_times": 3,
     "retry_delay_seconds": 5
   }

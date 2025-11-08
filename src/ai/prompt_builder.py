@@ -560,23 +560,42 @@ class PromptBuilder:
 - `funding_rate`：资金费率
 - `open_interest`：未平仓头寸数量
 - `position`：当前持仓（若有） 
-- `market_data`：多种时间维度指标（3m、1h、4h等）
+  - `side`: 做多/做空
+  - `positionAmt`: 持仓币种数量
+  - `entry_price`: 入场价格
+  - `leverage`: 杠杆倍数
+  - `unrealized_pnl`: 未实现盈亏
+  - `pnl_percent`: 未实现盈亏比
+  - `isolatedMargin`: 使用的保证金
+  - `take_profit`: 止盈价格
+  - `stop_loss`: 止损价格
+- `market_data`：多种时间维度指标（5m、1h、4h等）
   - `atr14`: 波动幅度 (权重:5%)
   - `ema7`: ema7 (权重:5%)
   - `ema21`: ema21 (权重:5%)
   - `rsi`: 最近 10 笔（rsi 旧→新）(权重:15%)
-  - `macd`: 最近 10 笔 MACD 快线（旧→新）(权重:15%)
-  - `histogram`: 最近 10 笔 MACD 柱状图（旧→新）(权重:15%)
-  - `kdj`: 最近 10 笔 kdj (旧→新）(权重:25%)
+  - `macd`: 最近 10 笔 MACD 快线（旧→新）(权重:10%)
+  - `histogram`: 最近 10 笔 MACD 柱状图（旧→新）(权重:10%)
+  - `kdj`: 最近 10 笔 kdj (旧→新）(权重:35%)
   - `boll`:  最近 10 笔 boll 资料 (旧→新）(权重:15%)
-  - `decision_history`:（旧→新）最近 10 笔你做过的决策，并有执行决策后的仓位记录
+  - `decision_history`:（旧→新）最近 3 笔你做过的决策，并有执行决策后的仓位记录
+    - `timestamp`: 时间戳, 
+    - `symbol`: 币种, 
+    - `action`: 决策动作, 
+    - `confidence`: 信心度, 
+    - `leverage`: 杠杆倍数, 
+    - `open_percent`: 开仓百分比, 
+    - `reduce_percent`: 减仓百分比, 
+    - `reason`: 决策理由, 
+    - `price`: 价格, 
+    - `positionAfterExecution`: 执行决策后的仓位记录，字段同position
 
 ## 交易配置参数
 
 ### 杠杆与仓位管理
 - ** 默认杠杆 **: {self.config.get('trading', {}).get('default_leverage', 10)} 倍
 - ** 最大杠杆 **: {self.config.get('trading', {}).get('max_leverage', 10)} 倍（仅在趋势极度明确时使用）
-- ** 单次开仓范围 **: 总资产的{self.config.get('trading', {}).get('min_position_percent', 10)} % - {self.config.get('trading', {}).get('max_position_percent', 10)} %
+- ** 单次开仓/加仓范围 **: 总资产的{self.config.get('trading', {}).get('min_position_percent', 10)} % - {self.config.get('trading', {}).get('max_position_percent', 10)} %
 - ** 现金储备 **: 永久保留{self.config.get('trading', {}).get('reserve_percent', 10)} % 现金，禁止全部投入
 
 ### 风险控制规则
@@ -598,18 +617,18 @@ class PromptBuilder:
 - 检查现金储备比例是否符合要求
 
 ### 2. 市场分析维度
-- ** 趋势分析 **: 短期 / 中期趋势方向判断
+- ** 趋势分析 **: 短期/中期趋势方向判断
 - ** 波动率评估 **: 高波动时收紧止损范围
-- ** 关键技术位 **: 支撑位 / 阻力位分析
+- ** 关键技术位 **: 支撑位/阻力位分析
 - ** 链上数据 **: 持仓量变化、大额转账等
 - ** 市场情绪 **: 贪婪恐惧指数等情绪指标
 
 ### 3. 交易决策逻辑
 
-#### 开仓条件（必须同时满足）:
+#### 开仓/加仓条件（必须同时满足）:
 - 市场趋势明确且符合分析逻辑
 - 风险限额未触及
-- 仓位比例在{self.config.get('trading', {}).get('min_position_percent', 10)} % - {self.config.get('trading', {}).get('max_position_percent', 10)} % 范围内
+- 仓位比例都要在{self.config.get('trading', {}).get('min_position_percent', 10)} % - {self.config.get('trading', {}).get('max_position_percent', 10)} % 范围内
 - 现金储备比例不低于{self.config.get('trading', {}).get('reserve_percent', 10)} %
 
 #### 平仓/减仓条件（满足任一即执行）:
@@ -619,7 +638,7 @@ class PromptBuilder:
 - 触及风险控制规则
 
 #### 调仓策略:
-- 浮盈 > {self.config.get('risk', {}).get('reduce_if_over', 10)} % 时：减仓30 % - 50 % 锁定利润
+- 浮盈 > {self.config.get('risk', {}).get('reduce_if_over', 10)} % 时：减仓30 % 锁定利润
 - 趋势极度明确时：可适度提高杠杆至{self.config.get('trading', {}).get('max_leverage', 10)} 倍
 - 市场异常时：立即启用保守模式（杠杆≤2倍）
 
@@ -629,7 +648,7 @@ class PromptBuilder:
 - BUY_OPEN/SELL_OPEN 时务必提供合理止盈止损价位
 - ADD_BUY_OPEN/ADD_SELL_OPEN 为加仓，加仓时需同时提供新的止盈止损价位（可参考当前position的take_profit/stop_loss来做计算）
 - 我会根据你回传的open_percent, leverage來开仓，开仓所使用的保证金(isolatedMargin)为 equity*open_percent
-  如果所有仓位的isolatedMargin合计超过equity的{100 - self.config.get('trading', {}).get('reserve_percent', 10)}%, 则不可开仓或加仓
+  如果所有仓位的isolatedMargin合计超过equity的{100 - self.config.get('trading', {}).get('reserve_percent', 10)} %, 则不可开仓或加仓
   各币种的isolatedMargin不要超过 equity/币种数量 
 - PARTIAL_CLOSE 为减仓，需要传入reduce_percent，不可以连续三次PARTIAL_CLOSE，若判断反转请直接CLOSE
 - 若技术分析结果与市场情况相反，造成仓位浮亏时，请结合风险控制规则考虑停损
