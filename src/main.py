@@ -319,24 +319,6 @@ class TradingBot:
     def execute_decision(self, symbol: str, decision: Dict[str, Any], market_data: Dict[str, Any]):
         """执行AI决策"""
         action = decision.get('action', 'HOLD')
-        confidence = decision.get('confidence', 0.5)
-        
-        # 确保 confidence 是数字
-        if isinstance(confidence, str):
-            conf_str = confidence.upper()
-            if conf_str == 'HIGH':
-                confidence = 0.8
-            elif conf_str == 'MEDIUM':
-                confidence = 0.6
-            elif conf_str == 'LOW':
-                confidence = 0.4
-            else:
-                confidence = 0.5
-        
-        # 如果信心度太低，不执行
-        if confidence < 0.5 and action != 'CLOSE':
-            self.log_ai.info(f"⚠️ {symbol} 信心度太低({confidence:.2f})，跳过执行")
-            return
         
         try:
             # 获取账户信息
@@ -527,7 +509,6 @@ class TradingBot:
             'timestamp': datetime.now().isoformat(),
             'symbol': symbol,
             'action': decision['action'],
-            'confidence': decision['confidence'],
             'leverage': decision['leverage'],
             'open_percent': decision.get('open_percent', 0),
             'reduce_percent': decision.get('reduce_percent', 0),

@@ -13,15 +13,13 @@
     "max_history": 300
   },
   "risk": {
-    "max_daily_loss_percent": 20,
-    "max_consecutive_losses": 4,
-    "stop_loss_low": 2,
-    "stop_loss_high": 7,
-    "take_profit_low": 2,
+    "stop_loss_low": 3,
+    "stop_loss_high": 6,
+    "take_profit_low": 3,
     "take_profit_high": 20,
-    "reduce_if_over" : 15,
+    "reduce_if_over" : 20,
     "reduce_if_fallback" : 15,
-    "position_tolerance" : -4
+    "position_tolerance" : -10
   },
   "ai": {
     "model": "deepseek-reasoner",
