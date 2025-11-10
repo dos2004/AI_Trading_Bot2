@@ -533,7 +533,7 @@ class TradingBot:
             'reduce_percent': decision.get('reduce_percent', 0),
             'reason': decision['reason'],
             'price': market_data['realtime'].get('price', 0),
-            'positionAfterExecution' : p_obj
+            'positionAfterExecution': p_obj
         }
         # 先存記憶體
         self.decision_history.append(decision_record)

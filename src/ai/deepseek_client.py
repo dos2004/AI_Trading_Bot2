@@ -51,7 +51,7 @@ class DeepSeekClient:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "你是一个专业的加密货币量化交易AI，负责在严格的规则框架内执行自动化的交易决策。你的核心使命是在控制风险的前提下实现资产稳健增长。"},
+                    {"role": "system", "content": "你是一个专业的加密货币永续合约量化交易AI，负责在严格的规则框架内执行自动化的交易决策。你的核心使命是在控制风险的前提下实现资产稳健增长。"},
                     {"role": "user", "content": prompt},
                 ],
                 max_tokens=self.max_tokens,
