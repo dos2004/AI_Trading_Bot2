@@ -39,8 +39,11 @@ class PromptBuilder:
         """
         self.config = config
         self.ai_config = config.get("ai", {})
+        self.trading_config = config.get("trading", {})
+        self.risk_config = config.get("risk", {})
+        self.default_leverage = self.trading_config.get('default_leverage', 1)
         # 预设的时间框架输出顺序（只输出存在于资料中的）
-        self.default_intervals = ["3m" , "5m", "15m", "1h", "4h", "1d"]
+        self.default_intervals = ["3m", "5m", "15m", "1h", "4h", "1d"]
         self.symbol_precisions = precision_map
 
     # ---------------------------
@@ -325,9 +328,13 @@ class PromptBuilder:
         # 价格类指标（单值）：动态价格精度
         block: Dict[str, Any] = {
             "time_frame": interval,
-            "ema7": self._round_price(symbol, ind.get("ema_7", 0.0)),
-            "ema21": self._round_price(symbol, ind.get("ema_21", 0.0)),
-            # "atr14": self._round_price(symbol, ind.get("atr_14", 0.0)),  # ATR 为价格距离，也用价格精度
+            "ema_9": self._round_price(symbol, ind.get("ema_9", 0.0)),
+            "ema_21": self._round_price(symbol, ind.get("ema_21", 0.0)),
+            # "atr_14": self._round_price(symbol, ind.get("atr_14", 0.0)),  # ATR 为价格距离，也用价格精度
+            "rsi_14": self._round_price(symbol, ind.get("rsi_14", 0.0)),
+            "bollinger_middle": self._round_price(symbol, ind.get("bollinger_middle", 0.0)),
+            "bollinger_upper": self._round_price(symbol, ind.get("bollinger_upper", 0.0)),
+            "bollinger_lower": self._round_price(symbol, ind.get("bollinger_lower", 0.0)),
         }
 
         # ===== RSI / MACD arrays（旧→新）=====
@@ -358,22 +365,22 @@ class PromptBuilder:
             except Exception:
                 pass
 
-        block["rsi"] = rsi_arr
-        block["macd"] = macd_arr
+        # block["rsi"] = rsi_arr
+        # block["macd"] = macd_arr
         # block["histogram"] = hist_arr
 
         # ===== KDJ 多组（旧→新）=====
         kdj_list = self._compute_kdj_series(df, n=9)
-        block["kdj"] = kdj_list
+        # block["kdj"] = kdj_list
 
         # ===== BOLL 多组（旧→新）=====
         boll_list = self._compute_boll_series(df, symbol, window=20)
-        block["boll"] = boll_list
+        # block["boll"] = boll_list
 
         # ===== OHLC（最近10根，旧→新；价格用动态价格精度）=====
         ohlc_list: List[Dict[str, float]] = []
         if df is not None and len(df) > 0:
-            tail = df.tail(5)
+            tail = df.tail(10)
             for _, row in tail.iterrows():
                 o = self._round_price(symbol, row.get("open", 0))
                 h = self._round_price(symbol, row.get("high", 0))
@@ -381,7 +388,7 @@ class PromptBuilder:
                 c = self._round_price(symbol, row.get("close", 0))
                 v = self._round(row.get("volume", 0), 0)  # 量仍用 0 位
                 ohlc_list.append({"O": o, "H": h, "L": l, "C": c, "V": v})
-        # block["ohlcv"] = ohlc_list
+        block["ohlcv"] = ohlc_list
         # block["patterns"] = self._detect_candlestick_patterns(ohlc_list) if ohlc_list else []
         return block
 
@@ -522,7 +529,7 @@ class PromptBuilder:
 
         prompt = f"""
 ## 角色定位
-你是一个专业的加密货币合约量化交易Bot，参考提供的多币种结构化市场行情数据（JSON），负责在严格的规则框架内执行自动化的交易决策。你的核心使命是在控制风险的前提下实现资产稳健增长。
+你是一个专业的加密货币合约量化交易机器人，参考提供的多币种结构化市场行情数据（JSON），每隔{self.config.get('schedule', {}).get('interval_minutes', 5)}分钟执行一次交易决策。
 
 ## 输出格式要求
 
@@ -532,7 +539,7 @@ class PromptBuilder:
 {{
     "BTCUSDT": {{
         "action": "BUY_OPEN" | "SELL_OPEN" | "CLOSE" | "HOLD" | "ADD_BUY_OPEN" | "ADD_SELL_OPEN | PARTIAL_CLOSE",
-        "reason": "简明扼要说明决策理由，少于50个字",
+        "reason": "说明决策理由，少于100个字",
         "leverage": {self.config.get('trading', {}).get('default_leverage', 10)} - {self.config.get('trading', {}).get('max_leverage', 10)},
         "open_percent": {self.config.get('trading', {}).get('min_position_percent', 10)} - {self.config.get('trading', {}).get('max_position_percent', 10)},
         "reduce_percent" : 0-100,
@@ -563,14 +570,15 @@ class PromptBuilder:
   - `isolatedMargin`: 使用的保证金
   - `take_profit`: 止盈价格
   - `stop_loss`: 止损价格
-- `market_data`：多种时间维度指标（5m、1h、4h等）
-  - `ema7`: ema7 (权重:10%)
-  - `ema21`: ema21 (权重:10%)
-  - `rsi`: 最近 10 笔（rsi 旧→新）(权重:15%)
-  - `macd`: 最近 10 笔 MACD 快线（旧→新）(权重:15%)
-  - `kdj`: 最近 10 笔 kdj (旧→新）(权重:35%)
-  - `boll`:  最近 10 笔 boll 资料 (旧→新）(权重:15%)
-  - `decision_history`:（旧→新）最近 3 笔你做过的决策，并有执行决策后的仓位记录
+- `market_data`：多种时间维度指标（5m、15m、1h等）
+  - `ema_9`: ema9
+  - `ema_21`: ema21
+  - `rsi_14`: 14周期rsi
+  - `bollinger_middle`: 20周期布林带中轨
+  - `bollinger_upper`: 20周期布林带上轨
+  - `bollinger_lower`: 20周期布林带下轨
+  - `ohlcv`:（旧→新）最近10周期的open/high/low/close/volume
+  - `decision_history`:（旧→新）最近3笔你做过的决策
     - `timestamp`: 时间
     - `symbol`: 币种
     - `action`: 决策动作
@@ -583,18 +591,14 @@ class PromptBuilder:
 ## 交易配置参数
 
 ### 杠杆与仓位管理
-- ** 默认杠杆 **: {self.config.get('trading', {}).get('default_leverage', 10)} 倍
-- ** 最大杠杆 **: {self.config.get('trading', {}).get('max_leverage', 10)} 倍（仅在趋势极度明确时使用）
-- ** 单次开仓/加仓范围 **: 总资产的{self.config.get('trading', {}).get('min_position_percent', 10)} % - {self.config.get('trading', {}).get('max_position_percent', 10)} %
-- ** 现金储备 **: 永久保留{self.config.get('trading', {}).get('reserve_percent', 10)} % 现金，禁止全部投入
+- ** 默认杠杆 **: {self.trading_config.get('default_leverage', 10)}倍
+- ** 最大杠杆 **: {self.trading_config.get('max_leverage', 10)}倍（仅在趋势极度明确时使用）
+- ** 单次开仓/加仓范围 **: 总资产的{self.trading_config.get('min_position_percent', 10)}% - {self.trading_config.get('max_position_percent', 10)}%
+- ** 现金储备 **: 永久保留{self.trading_config.get('reserve_percent', 10)}%现金，禁止全部投入
 
 ### 风险控制规则
-- ** 止损区间 **: -{self.config.get('risk', {}).get('stop_loss_low', 10)} % 到 -{self.config.get('risk', {}).get('stop_loss_high', 10)} %（根据市场波动动态选择）
-- ** 止盈区间 **: +{self.config.get('risk', {}).get('take_profit_low', 10)} % 到 +{self.config.get('risk', {}).get('take_profit_high', 10)} %（优先保护利润）
-- ** 减仓规则 **:
-  - 浮盈超过{self.config.get('risk', {}).get('reduce_if_over', 10)} % 时，可部分减仓锁定利润
-  - 从高点回撤{self.config.get('risk', {}).get('reduce_if_fallback', 10)} % 时，强制减仓或平仓
-- ** 持仓容忍度 **: {self.config.get('risk', {}).get('position_tolerance', 10)} %（浮亏超过此值需平仓）
+- ** 止损区间 **: -{self.risk_config.get('stop_loss_low', 10)}% 到 -{self.risk_config.get('stop_loss_high', 10)}%（根据市场波动动态选择）
+- ** 止盈区间 **: +{self.risk_config.get('take_profit_low', 10)}% 到 +{self.risk_config.get('take_profit_high', 10)}%（优先保护利润）
 
 ## 决策流程框架
 
@@ -602,41 +606,24 @@ class PromptBuilder:
 - 确认当前总仓位（多币种仓位总和）是否超出限制
 - 检查现金储备比例是否符合要求
 
-### 2. 市场分析维度
-- ** 趋势分析 **: 短期/中期趋势方向判断
-- ** 波动率评估 **: 高波动时收紧止损范围
-- ** 关键技术位 **: 支撑位/阻力位分析
-- ** 链上数据 **: 持仓量变化、大额转账等
-- ** 市场情绪 **: 贪婪恐惧指数等情绪指标
+### 2. 市场行情分析
+- time_frame:1h 用来判断趋势方向
+- time_frame:15m,5m 用来判断是否开仓，也可用来判断是否获利了结/停损
+- 可参考 market_data 内不同 time_frame 的 ema/rsi/bollinger/ohlcv
+- 每个币种下方含有该币的 decision_history（旧→新），可用来对齐你的建议与既有持仓/历史
 
 ### 3. 交易决策逻辑
+- 判断市场上涨时，执行 BUY_OPEN（做多）/ADD_BUY_OPEN（加仓做多）
+- 判断市场下跌时，执行 SELL_OPEN（做空）/ADD_SELL_OPEN（加仓做空）
+- 若判断趋势不明确，可使用 HOLD（暂不操作）
+- 浮盈超过{self.risk_config.get('reduce_if_over', 1)*self.default_leverage}%时，执行PARTIAL_CLOSE（减仓）
+- 浮亏超过{self.risk_config.get('position_tolerance', 1)*self.default_leverage}%时，执行CLOSE（平仓）
 
-#### 开仓/加仓条件（必须同时满足）:
-- 市场趋势明确且符合分析逻辑
-- 风险限额未触及
-- 仓位比例在{self.config.get('trading', {}).get('min_position_percent', 10)} % - {self.config.get('trading', {}).get('max_position_percent', 10)} % 范围内
-- 现金储备比例不低于{self.config.get('trading', {}).get('reserve_percent', 10)} %
-
-#### 平仓/减仓条件（满足任一即执行）:
-- 浮盈超过{self.config.get('risk', {}).get('reduce_if_over', 10)} %
-- 浮盈从高点回撤{self.config.get('risk', {}).get('reduce_if_fallback', 10)} %
-- 浮亏超过{self.config.get('risk', {}).get('position_tolerance', 10)} %
-
-#### 调仓策略:
-- 浮盈超过{self.config.get('risk', {}).get('reduce_if_over', 10)} % 时：减仓30 % 锁定利润
-- 浮盈从高点回撤{self.config.get('risk', {}).get('reduce_if_fallback', 10)} % 时：减仓30 % 降低风险
-- 浮亏超过{self.config.get('risk', {}).get('position_tolerance', 10)} % 时：平仓
-
-#### 仓位说明:
-- 不要只做多，下跌趋势时可以做空
-- 每个币种单独决策，依市场状况 BUY_OPEN(做多)/SELL_OPEN(做空)/ADD_BUY_OPEN(加仓做多)/ADD_SELL_OPEN(加仓做空)
-- 若判断风险较高或趋势不明确，可使用 HOLD。HOLD时无需提供leverage/open_percent/take_profit/stop_loss
-- BUY_OPEN/SELL_OPEN 时务必提供合理止盈止损价位
-- ADD_BUY_OPEN/ADD_SELL_OPEN 为加仓，加仓时需同时提供新的止盈止损价位（可参考当前position的take_profit/stop_loss来做计算）
-- PARTIAL_CLOSE 为减仓，只用来确保利润,不用来减少损失，需要传入reduce_percent，不可以连续三次PARTIAL_CLOSE，若判断反转请直接CLOSE
-- 我会根据你回传的open_percent, leverage來开仓，开仓所使用的保证金(isolatedMargin)为 equity*open_percent
-  如果所有仓位的isolatedMargin合计超过equity的{100 - self.config.get('trading', {}).get('reserve_percent', 10)} %, 则不可开仓或加仓
-  各币种的isolatedMargin不要超过 equity/币种数量
+## 仓位说明
+- 每个币种单独决策，同一个币种不能同时有做多和做空两种仓位
+- BUY_OPEN/SELL_OPEN/ADD_BUY_OPEN/ADD_SELL_OPEN 时务必根据最新行情数据提供合理止盈止损价位
+- PARTIAL_CLOSE 需要传入reduce_percent（建议20% - 40%，根据情况判断），不可以连续三次PARTIAL_CLOSE，若判断趋势反转请直接CLOSE
+- 我会根据你回传的open_percent, leverage来开仓，开仓所使用的保证金(isolatedMargin)为equity*open_percent，如果所有仓位的isolatedMargin合计超过equity的{100 - self.trading_config.get('reserve_percent', 10)}%, 则不可开仓或加仓
 
 ##当前时间
 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}

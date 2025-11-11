@@ -190,7 +190,7 @@ class TradingBot:
         """获取单个币种的市场数据"""
         # 多周期K线
         # intervals = ['5m', '1h', "4h", '1d']
-        intervals = ['5m', '1h', "4h"]
+        intervals = ['5m', '15m', "1h"]
         multi_timeframe = self.market_data.get_multi_timeframe_data(symbol, intervals)
         
         # 实时行情
@@ -591,7 +591,7 @@ class TradingBot:
     def run(self):
         """启动主循环"""
         schedule_config = ConfigLoader.get_schedule_config(self.config)
-        interval_seconds = schedule_config['interval_seconds']
+        interval_seconds = schedule_config['interval_minutes'] * 60
         
         self.log_ai.info(f"\n⏱️  交易周期: 每{interval_seconds}秒")
         self.log_ai.info(f"📊 交易币种: {', '.join(ConfigLoader.get_trading_symbols(self.config))}")

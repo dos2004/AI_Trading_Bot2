@@ -128,9 +128,9 @@ class MarketDataManager:
             return zeros
 
         # compute via project helpers
-        rsi = calculate_rsi(close, 14)
+        rsi14 = calculate_rsi(close, 14)
         macd_line, macd_signal, macd_hist = calculate_macd(close, 12, 26, 9)
-        ema7 = calculate_ema(close, 7)
+        ema9 = calculate_ema(close, 9)
         ema21 = calculate_ema(close, 21)
         sma20 = calculate_sma(close, 20)
         sma50 = calculate_sma(close, 50)
@@ -146,9 +146,9 @@ class MarketDataManager:
         # build both naming schemes
         out = {
             # Uppercase set (you used earlier)
-            "RSI": nz(rsi),
+            "RSI14": nz(rsi14),
             "MACD": nz(macd_hist),           # single-number MACD → histogram
-            "EMA7": nz(ema7),
+            "EMA9": nz(ema9),
             "EMA21": nz(ema21),
             "SMA20": nz(sma20),
             "SMA50": nz(sma50),
@@ -158,11 +158,11 @@ class MarketDataManager:
             "ATR": nz(atr),
 
             # Snake_case set (what prompt_builder.py reads)
-            "rsi": nz(rsi),
+            "rsi_14": nz(rsi14),
             "macd": nz(macd_line),           # prompt expects 3 MACD pieces:
             "macd_signal": nz(macd_signal),  #   line, signal, histogram
             "macd_histogram": nz(macd_hist),
-            "ema_7": nz(ema7),
+            "ema_9": nz(ema9),
             "ema_21": nz(ema21),
             "sma_20": nz(sma20),
             "sma_50": nz(sma50),

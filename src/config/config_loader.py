@@ -127,7 +127,7 @@ class ConfigLoader:
         """获取调度配置"""
         schedule = config.get('schedule', {})
         return {
-            'interval_seconds': schedule.get('interval_seconds', 180),
+            'interval_minutes': schedule.get('interval_minutes', 3),
             'retry_times': schedule.get('retry_times', 3),
             'retry_delay_seconds': schedule.get('retry_delay_seconds', 5)
         }
