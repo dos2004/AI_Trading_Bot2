@@ -209,7 +209,7 @@ class PromptBuilder:
                     "timestamp": rec.get("timestamp"),
                     "action": rec.get("action"),
                     "open_percent" : rec.get("open_percent") or 0,
-                    "reduce_percent" : rec.get("reduce_percent") or 0,
+                    # "reduce_percent" : rec.get("reduce_percent") or 0,
                     "leverage": self._to_float(rec.get("leverage"), 0.0),
                     "reason": rec.get("reason"),
                     "price": self._to_float(rec.get("price"), 0.0),
@@ -380,16 +380,18 @@ class PromptBuilder:
         # ===== OHLC（最近10根，旧→新；价格用动态价格精度）=====
         ohlc_list: List[Dict[str, float]] = []
         if df is not None and len(df) > 0:
-            tail = df.tail(10)
+            tail = df.tail(20)
             for _, row in tail.iterrows():
                 o = self._round_price(symbol, row.get("open", 0))
                 h = self._round_price(symbol, row.get("high", 0))
                 l = self._round_price(symbol, row.get("low", 0))
                 c = self._round_price(symbol, row.get("close", 0))
-                v = self._round(row.get("volume", 0), 0)  # 量仍用 0 位
+                v = int(self._round(row.get("volume", 0), 0))  # 量仍用 0 位
                 ohlc_list.append({"O": o, "H": h, "L": l, "C": c, "V": v})
-        block["ohlcv"] = ohlc_list
+        # block["ohlcv"] = ohlc_list
         # block["patterns"] = self._detect_candlestick_patterns(ohlc_list) if ohlc_list else []
+        volume_array = [entry["V"] for entry in ohlc_list]
+        block["volumes"] = volume_array
         return block
 
     def _opt_price(self, symbol: str, x: Any):
@@ -529,7 +531,7 @@ class PromptBuilder:
 
         prompt = f"""
 ## 角色定位
-你是一个专业的加密货币合约量化交易机器人，参考提供的多币种结构化市场行情数据（JSON），每隔{self.config.get('schedule', {}).get('interval_minutes', 5)}分钟执行一次交易决策。
+你是一个专业的加密货币合约短线交易机器人，参考下文的市场行情数据，每隔{self.config.get('schedule', {}).get('interval_minutes', 5)}分钟执行一次交易决策。
 
 ## 输出格式要求
 
@@ -538,11 +540,10 @@ class PromptBuilder:
 ```json
 {{
     "BTCUSDT": {{
-        "action": "BUY_OPEN" | "SELL_OPEN" | "CLOSE" | "HOLD" | "ADD_BUY_OPEN" | "ADD_SELL_OPEN | PARTIAL_CLOSE",
+        "action": "BUY_OPEN" | "SELL_OPEN" | "CLOSE" | "HOLD",
         "reason": "说明决策理由，少于100个字",
-        "leverage": {self.config.get('trading', {}).get('default_leverage', 10)} - {self.config.get('trading', {}).get('max_leverage', 10)},
-        "open_percent": {self.config.get('trading', {}).get('min_position_percent', 10)} - {self.config.get('trading', {}).get('max_position_percent', 10)},
-        "reduce_percent" : 0-100,
+        "leverage": {self.trading_config.get('default_leverage', 10)} - {self.trading_config.get('max_leverage', 10)},
+        "open_percent": {self.trading_config.get('min_position_percent', 10)} - {self.trading_config.get('max_position_percent', 10)},
         "take_profit": 1000,
         "stop_loss": 800
     }},
@@ -573,32 +574,30 @@ class PromptBuilder:
 - `market_data`：多种时间维度指标（5m、15m、1h等）
   - `ema_9`: ema9
   - `ema_21`: ema21
-  - `rsi_14`: 14周期rsi
-  - `bollinger_middle`: 20周期布林带中轨
-  - `bollinger_upper`: 20周期布林带上轨
-  - `bollinger_lower`: 20周期布林带下轨
-  - `ohlcv`:（旧→新）最近10周期的open/high/low/close/volume
+  - `rsi_14`: 最近14根K线的rsi
+  - `bollinger_middle`: 最近20根K线的布林带中轨
+  - `bollinger_upper`: 最近20根K线的布林带上轨
+  - `bollinger_lower`: 最近20根K线的布林带下轨
+  - `volumes`:（旧→新）最近20根K线的成交量数组
   - `decision_history`:（旧→新）最近3笔你做过的决策
     - `timestamp`: 时间
     - `symbol`: 币种
     - `action`: 决策动作
     - `leverage`: 杠杆倍数
     - `open_percent`: 开仓百分比
-    - `reduce_percent`: 减仓百分比
     - `reason`: 决策理由
     - `price`: 价格
 
 ## 交易配置参数
 
 ### 杠杆与仓位管理
-- ** 默认杠杆 **: {self.trading_config.get('default_leverage', 10)}倍
-- ** 最大杠杆 **: {self.trading_config.get('max_leverage', 10)}倍（仅在趋势极度明确时使用）
-- ** 单次开仓/加仓范围 **: 总资产的{self.trading_config.get('min_position_percent', 10)}% - {self.trading_config.get('max_position_percent', 10)}%
+- ** 杠杆倍数 **: {self.trading_config.get('default_leverage', 10)}倍
+- ** 单次开仓范围 **: 总资产的{self.trading_config.get('min_position_percent', 10)}% - {self.trading_config.get('max_position_percent', 10)}%
 - ** 现金储备 **: 永久保留{self.trading_config.get('reserve_percent', 10)}%现金，禁止全部投入
 
 ### 风险控制规则
-- ** 止损区间 **: -{self.risk_config.get('stop_loss_low', 10)}% 到 -{self.risk_config.get('stop_loss_high', 10)}%（根据市场波动动态选择）
-- ** 止盈区间 **: +{self.risk_config.get('take_profit_low', 10)}% 到 +{self.risk_config.get('take_profit_high', 10)}%（优先保护利润）
+- ** 止损区间 **: -{self.risk_config.get('stop_loss_low', 10)}% 到 -{self.risk_config.get('stop_loss_high', 10)}%
+- ** 止盈区间 **: +{self.risk_config.get('take_profit_low', 10)}% 到 +{self.risk_config.get('take_profit_high', 10)}%
 
 ## 决策流程框架
 
@@ -607,23 +606,21 @@ class PromptBuilder:
 - 检查现金储备比例是否符合要求
 
 ### 2. 市场行情分析
+- 参考 market_data 内不同 time_frame 的 ema/rsi/bollinger/volumes 指标
 - time_frame:1h 用来判断趋势方向
 - time_frame:15m,5m 用来判断是否开仓，也可用来判断是否获利了结/停损
-- 可参考 market_data 内不同 time_frame 的 ema/rsi/bollinger/ohlcv
 - 每个币种下方含有该币的 decision_history（旧→新），可用来对齐你的建议与既有持仓/历史
 
 ### 3. 交易决策逻辑
-- 判断市场上涨时，执行 BUY_OPEN（做多）/ADD_BUY_OPEN（加仓做多）
-- 判断市场下跌时，执行 SELL_OPEN（做空）/ADD_SELL_OPEN（加仓做空）
+- 判断市场上涨时，执行 BUY_OPEN（做多）
+- 判断市场下跌时，执行 SELL_OPEN（做空）
 - 若判断趋势不明确，可使用 HOLD（暂不操作）
-- 浮盈超过{self.risk_config.get('reduce_if_over', 1)*self.default_leverage}%时，执行PARTIAL_CLOSE（减仓）
-- 浮亏超过{self.risk_config.get('position_tolerance', 1)*self.default_leverage}%时，执行CLOSE（平仓）
+- 若判断趋势与持仓方向反转、或获利了结时，执行 CLOSE（平仓）
 
 ## 仓位说明
 - 每个币种单独决策，同一个币种不能同时有做多和做空两种仓位
-- BUY_OPEN/SELL_OPEN/ADD_BUY_OPEN/ADD_SELL_OPEN 时务必根据最新行情数据提供合理止盈止损价位
-- PARTIAL_CLOSE 需要传入reduce_percent（建议20% - 40%，根据情况判断），不可以连续三次PARTIAL_CLOSE，若判断趋势反转请直接CLOSE
-- 我会根据你回传的open_percent, leverage来开仓，开仓所使用的保证金(isolatedMargin)为equity*open_percent，如果所有仓位的isolatedMargin合计超过equity的{100 - self.trading_config.get('reserve_percent', 10)}%, 则不可开仓或加仓
+- BUY_OPEN/SELL_OPEN 时务必提供合理止盈止损价位
+- HOLD 时无需提供leverage/open_percent/take_profit/stop_loss
 
 ##当前时间
 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}

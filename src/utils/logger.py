@@ -58,6 +58,10 @@ def init_all_loggers() -> dict[str, logging.Logger]:
     ai_logger.setLevel(logging.INFO)
     _ensure_handlers(ai_logger, [_build_file_handler("ai.log", logging.INFO)])
 
+    ai_action_logger = logging.getLogger("ai_action")
+    ai_action_logger.setLevel(logging.INFO)
+    _ensure_handlers(ai_action_logger, [_build_file_handler("ai_action.log", logging.INFO)])
+
     trade_logger = logging.getLogger("trade")
     trade_logger.setLevel(logging.INFO)
     _ensure_handlers(trade_logger, [_build_file_handler("trade.log", logging.INFO)])
@@ -86,6 +90,7 @@ def get_logger(name: str) -> logging.Logger:
     """
     m = {
         "ai": ("ai.log",),
+        "ai_action": ("ai_action.log",),
         "trade": ("trade.log",),
         "system": ("system.log",),
         "prompt": ("prompt.log"),

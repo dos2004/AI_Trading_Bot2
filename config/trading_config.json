@@ -2,9 +2,9 @@
   "trading": {
     "symbols": ["BNBUSDT", "SOLUSDT", "ETHUSDT"],
     "default_leverage": 5,
-    "max_leverage": 10,
-    "min_position_percent": 5,
-    "max_position_percent": 10,
+    "max_leverage": 5,
+    "min_position_percent": 6,
+    "max_position_percent": 12,
     "reserve_percent": 20
   },
   "paths": {
@@ -14,9 +14,9 @@
   },
   "risk": {
     "stop_loss_low": 2,
-    "stop_loss_high": 5,
-    "take_profit_low": 3,
-    "take_profit_high": 10,
+    "stop_loss_high": 8,
+    "take_profit_low": 2,
+    "take_profit_high": 8,
     "reduce_if_over": 3,
     "position_tolerance": -2
   },

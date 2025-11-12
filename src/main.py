@@ -36,6 +36,7 @@ class TradingBot:
     def __init__(self, config_path: str = 'config/trading_config.json'):
         self.logs = init_all_loggers()
         self.log_ai = get_logger("ai")
+        self.log_ai_action = get_logger("ai_action")
         self.log_trade = get_logger("trade")
         self.log_sys = get_logger("system")
         self.log_prompt = get_logger("prompt")
@@ -319,6 +320,10 @@ class TradingBot:
     def execute_decision(self, symbol: str, decision: Dict[str, Any], market_data: Dict[str, Any]):
         """执行AI决策"""
         action = decision.get('action', 'HOLD')
+        if action != 'HOLD':
+            self.log_ai_action.info("\n\n" + "=" * 60)
+            self.log_ai_action.info(f"执行决策: {decision}")
+            self.log_ai_action.info("=" * 60)
         
         try:
             # 获取账户信息
@@ -511,7 +516,7 @@ class TradingBot:
             'action': decision['action'],
             'leverage': decision['leverage'],
             'open_percent': decision.get('open_percent', 0),
-            'reduce_percent': decision.get('reduce_percent', 0),
+            # 'reduce_percent': decision.get('reduce_percent', 0),
             'reason': decision['reason'],
             'price': market_data['realtime'].get('price', 0),
             'positionAfterExecution': p_obj
