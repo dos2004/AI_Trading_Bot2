@@ -322,8 +322,7 @@ class TradingBot:
         action = decision.get('action', 'HOLD')
         if action != 'HOLD':
             self.log_ai_action.info("\n\n" + "=" * 60)
-            self.log_ai_action.info(f"执行决策: {decision}")
-            self.log_ai_action.info("=" * 60)
+            self.log_ai_action.info(f"执行决策: {symbol} - {json.dumps(decision, ensure_ascii=False, indent=2)}")
         
         try:
             # 获取账户信息

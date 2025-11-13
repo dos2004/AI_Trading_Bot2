@@ -450,7 +450,7 @@ class PromptBuilder:
             }
 
         # 历史决策按币种分组（旧→新）
-        grouped_hist = self._group_history_by_symbol(decision_history, max_per_symbol=3)
+        grouped_hist = self._group_history_by_symbol(decision_history, max_per_symbol=5)
 
         # 遍历币种
         for symbol, symbol_data in all_symbols_data.items():
@@ -579,7 +579,7 @@ class PromptBuilder:
   - `bollinger_upper`: 最近20根K线的布林带上轨
   - `bollinger_lower`: 最近20根K线的布林带下轨
   - `volumes`:（旧→新）最近20根K线的成交量数组
-  - `decision_history`:（旧→新）最近3笔你做过的决策
+  - `decision_history`:（旧→新）最近5笔你做过的决策
     - `timestamp`: 时间
     - `symbol`: 币种
     - `action`: 决策动作
@@ -591,13 +591,15 @@ class PromptBuilder:
 ## 交易配置参数
 
 ### 杠杆与仓位管理
-- ** 杠杆倍数 **: {self.trading_config.get('default_leverage', 10)}倍
+- ** 默认杠杆 **: {self.trading_config.get('default_leverage', 10)}倍
+- ** 最大杠杆 **: {self.trading_config.get('max_leverage', 10)}倍（仅在趋势极度明确时使用）
 - ** 单次开仓范围 **: 总资产的{self.trading_config.get('min_position_percent', 10)}% - {self.trading_config.get('max_position_percent', 10)}%
 - ** 现金储备 **: 永久保留{self.trading_config.get('reserve_percent', 10)}%现金，禁止全部投入
 
 ### 风险控制规则
 - ** 止损区间 **: -{self.risk_config.get('stop_loss_low', 10)}% 到 -{self.risk_config.get('stop_loss_high', 10)}%
 - ** 止盈区间 **: +{self.risk_config.get('take_profit_low', 10)}% 到 +{self.risk_config.get('take_profit_high', 10)}%
+- ** 持仓容忍度 **: {self.risk_config.get('position_tolerance', 10)}%
 
 ## 决策流程框架
 
@@ -606,16 +608,16 @@ class PromptBuilder:
 - 检查现金储备比例是否符合要求
 
 ### 2. 市场行情分析
-- 参考 market_data 内不同 time_frame 的 ema/rsi/bollinger/volumes 指标
-- time_frame:1h 用来判断趋势方向
-- time_frame:15m,5m 用来判断是否开仓，也可用来判断是否获利了结/停损
+- 参考 market_data 内不同 time_frame 的 ema/rsi/volumes/bollinger 指标
+- time_frame:1h,15m,5m 顺1小时趋势，在15分钟回调时，用5分钟信号入场
 - 每个币种下方含有该币的 decision_history（旧→新），可用来对齐你的建议与既有持仓/历史
 
 ### 3. 交易决策逻辑
-- 判断市场上涨时，执行 BUY_OPEN（做多）
-- 判断市场下跌时，执行 SELL_OPEN（做空）
-- 若判断趋势不明确，可使用 HOLD（暂不操作）
-- 若判断趋势与持仓方向反转、或获利了结时，执行 CLOSE（平仓）
+- 判断市场趋势上涨时，执行 BUY_OPEN（做多）
+- 判断市场趋势下跌时，执行 SELL_OPEN（做空）
+- 判断市场趋势不明确时，使用 HOLD（暂不操作）
+- 判断市场趋势与持仓方向反转时，执行 CLOSE（平仓）
+- 获利了结时，使用 CLOSE（平仓）
 
 ## 仓位说明
 - 每个币种单独决策，同一个币种不能同时有做多和做空两种仓位
