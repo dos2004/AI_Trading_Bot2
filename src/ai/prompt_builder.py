@@ -205,16 +205,23 @@ class PromptBuilder:
 
             cleaned_list: List[Dict[str, Any]] = []
             for rec in trimmed:
-                cleaned = {
-                    "timestamp": rec.get("timestamp"),
-                    "action": rec.get("action"),
-                    "open_percent" : rec.get("open_percent") or 0,
-                    # "reduce_percent" : rec.get("reduce_percent") or 0,
-                    "leverage": self._to_float(rec.get("leverage"), 0.0),
-                    "reason": rec.get("reason"),
-                    "price": self._to_float(rec.get("price"), 0.0),
-                }
-                cleaned_list.append(cleaned)
+                if rec.get("action") == 'HOLD':
+                    cleaned = {
+                        "timestamp": rec.get("timestamp"),
+                        "action": rec.get("action"),
+                        "reason": rec.get("reason"),
+                    }
+                    cleaned_list.append(cleaned)
+                else:
+                    cleaned = {
+                        "timestamp": rec.get("timestamp"),
+                        "action": rec.get("action"),
+                        "open_percent": rec.get("open_percent") or 0,
+                        # "reduce_percent" : rec.get("reduce_percent") or 0,
+                        "leverage": self._to_float(rec.get("leverage"), 0.0),
+                        "reason": rec.get("reason"),
+                    }
+                    cleaned_list.append(cleaned)
 
             grouped[sym] = cleaned_list  # 旧→新
 
@@ -581,12 +588,10 @@ class PromptBuilder:
   - `volumes`:（旧→新）最近20根K线的成交量数组
   - `decision_history`:（旧→新）最近5笔你做过的决策
     - `timestamp`: 时间
-    - `symbol`: 币种
     - `action`: 决策动作
     - `leverage`: 杠杆倍数
     - `open_percent`: 开仓百分比
     - `reason`: 决策理由
-    - `price`: 价格
 
 ## 交易配置参数
 
@@ -599,7 +604,6 @@ class PromptBuilder:
 ### 风险控制规则
 - ** 止损区间 **: -{self.risk_config.get('stop_loss_low', 10)}% 到 -{self.risk_config.get('stop_loss_high', 10)}%
 - ** 止盈区间 **: +{self.risk_config.get('take_profit_low', 10)}% 到 +{self.risk_config.get('take_profit_high', 10)}%
-- ** 持仓容忍度 **: {self.risk_config.get('position_tolerance', 10)}%
 
 ## 决策流程框架
 
@@ -609,20 +613,22 @@ class PromptBuilder:
 
 ### 2. 市场行情分析
 - 参考 market_data 内不同 time_frame 的 ema/rsi/volumes/bollinger 指标
-- time_frame:1h,15m,5m 顺1小时趋势，在15分钟回调时，用5分钟信号入场
-- 每个币种下方含有该币的 decision_history（旧→新），可用来对齐你的建议与既有持仓/历史
+- time_frame:1h,15m,5m 顺1小时趋势，在15分钟、5分钟走势上寻找开仓信号
+- 每个币种下方含有该币的 decision_history（旧→新），可用来对齐你的建议
 
 ### 3. 交易决策逻辑
-- 判断市场趋势上涨时，执行 BUY_OPEN（做多）
 - 判断市场趋势下跌时，执行 SELL_OPEN（做空）
+- 判断市场趋势上涨时，执行 BUY_OPEN（做多）
 - 判断市场趋势不明确时，使用 HOLD（暂不操作）
 - 判断市场趋势与持仓方向反转时，执行 CLOSE（平仓）
 - 获利了结时，使用 CLOSE（平仓）
 
-## 仓位说明
+## 关键原则说明
+- 不要只做多
+- 不要频繁开仓平仓，有足够信心再给开仓信号
 - 每个币种单独决策，同一个币种不能同时有做多和做空两种仓位
 - BUY_OPEN/SELL_OPEN 时务必提供合理止盈止损价位
-- HOLD 时无需提供leverage/open_percent/take_profit/stop_loss
+- HOLD/CLOSE 时无需提供leverage/open_percent/take_profit/stop_loss
 
 ##当前时间
 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
