@@ -478,7 +478,7 @@ class PromptBuilder:
                 "position": None,
                 "market_data": [],
                 # 该币种的历史决策（旧→新）
-                "decision_history": grouped_hist.get(symbol, []),
+                # "decision_history": grouped_hist.get(symbol, []),
             }
 
             # 持仓（若有）— 数量用 qty 精度，价格用 price 精度
@@ -586,12 +586,6 @@ class PromptBuilder:
   - `bollinger_upper`: 最近20根K线的布林带上轨
   - `bollinger_lower`: 最近20根K线的布林带下轨
   - `volumes`:（旧→新）最近20根K线的成交量数组
-  - `decision_history`:（旧→新）最近5笔你做过的决策
-    - `timestamp`: 时间
-    - `action`: 决策动作
-    - `leverage`: 杠杆倍数
-    - `open_percent`: 开仓百分比
-    - `reason`: 决策理由
 
 ## 交易配置参数
 
@@ -614,7 +608,6 @@ class PromptBuilder:
 ### 2. 市场行情分析
 - 参考 market_data 内不同 time_frame 的 ema/rsi/volumes/bollinger 指标
 - time_frame:1h,15m,5m 顺1小时趋势，在15分钟、5分钟走势上寻找开仓信号
-- 每个币种下方含有该币的 decision_history（旧→新），可用来对齐你的建议
 
 ### 3. 交易决策逻辑
 - 判断市场趋势下跌时，执行 SELL_OPEN（做空）
