@@ -596,8 +596,8 @@ class PromptBuilder:
 - ** 现金储备 **: 永久保留{self.trading_config.get('reserve_percent', 10)}%现金，禁止全部投入
 
 ### 风险控制规则
-- ** 开仓止损区间 **: -{self.risk_config.get('stop_loss_low', 10)}% 到 -{self.risk_config.get('stop_loss_high', 10)}%（用于开仓时设置止损价）
-- ** 开仓止盈区间 **: +{self.risk_config.get('take_profit_low', 10)}% 到 +{self.risk_config.get('take_profit_high', 10)}%（用于开仓时设置止盈价）
+- ** 止损百分比 **: -{self.risk_config.get('stop_loss_high', 10)}%, 该值/leverage = 开仓止损价
+- ** 止盈百分比 **: +{self.risk_config.get('take_profit_high', 10)}%, 该值/leverage = 开仓止盈价
 
 ## 决策流程框架
 
@@ -622,7 +622,6 @@ class PromptBuilder:
 - 每个币种单独决策，同一个币种不能同时有做多和做空两种仓位
 - BUY_OPEN/SELL_OPEN 时务必提供合理止盈止损价位
 - HOLD/CLOSE 时无需提供leverage/open_percent/take_profit/stop_loss
-- 欲止盈止损平仓时，可参考position中的take_profit/stop_loss价位
 
 ##当前时间
 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
