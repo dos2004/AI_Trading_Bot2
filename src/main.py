@@ -191,7 +191,7 @@ class TradingBot:
         """获取单个币种的市场数据"""
         # 多周期K线
         # intervals = ['5m', '1h', "4h", '1d']
-        intervals = ['5m', '15m', "1h"]
+        intervals = ['5m', '15m']
         multi_timeframe = self.market_data.get_multi_timeframe_data(symbol, intervals)
         
         # 实时行情

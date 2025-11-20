@@ -578,7 +578,7 @@ class PromptBuilder:
   - `isolatedMargin`: 使用的保证金
   - `take_profit`: 止盈价格
   - `stop_loss`: 止损价格
-- `market_data`：多种时间维度指标（5m、15m、1h等）
+- `market_data`：多种时间维度指标（5m、15m等）
   - `ema_9`: ema9
   - `ema_21`: ema21
   - `rsi_14`: 最近14根K线的rsi
@@ -607,7 +607,7 @@ class PromptBuilder:
 
 ### 2. 市场行情分析
 - 参考 market_data 内不同 time_frame 的 ema/rsi/volumes/bollinger 指标
-- time_frame:1h,15m,5m 顺1小时趋势，在15分钟、5分钟走势上寻找开仓信号
+- time_frame:15m,5m 顺15分钟趋势，在5分钟走势上寻找开仓信号
 
 ### 3. 交易决策逻辑
 - 判断市场趋势下跌时，执行 SELL_OPEN（做空）
