@@ -14,9 +14,9 @@
   },
   "risk": {
     "stop_loss_low": 3,
-    "stop_loss_high": 21,
+    "stop_loss_high": 9,
     "take_profit_low": 3,
-    "take_profit_high": 21,
+    "take_profit_high": 18,
     "reduce_if_over": 10,
     "position_tolerance": -10
   },

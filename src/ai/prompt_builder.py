@@ -337,7 +337,7 @@ class PromptBuilder:
             "time_frame": interval,
             "ema_9": self._round_price(symbol, ind.get("ema_9", 0.0)),
             "ema_21": self._round_price(symbol, ind.get("ema_21", 0.0)),
-            # "atr_14": self._round_price(symbol, ind.get("atr_14", 0.0)),  # ATR 为价格距离，也用价格精度
+            "atr_14": self._round_price(symbol, ind.get("atr_14", 0.0)),  # ATR 为价格距离，也用价格精度
             "rsi_14": self._round_price(symbol, ind.get("rsi_14", 0.0)),
             "bollinger_middle": self._round_price(symbol, ind.get("bollinger_middle", 0.0)),
             "bollinger_upper": self._round_price(symbol, ind.get("bollinger_upper", 0.0)),
@@ -579,6 +579,7 @@ class PromptBuilder:
   - `take_profit`: 止盈价格
   - `stop_loss`: 止损价格
 - `market_data`：多种时间维度指标（5m、15m等）
+  - `atr_14`: 波动幅度
   - `ema_9`: ema9
   - `ema_21`: ema21
   - `rsi_14`: 最近14根K线的rsi
